@@ -45,6 +45,9 @@ if (!$result) {
     die('Error fetching assets data');
 }
 
+// Log the export action
+log_audit($conn, $_SESSION['user_id'], 'EXPORT_ASSETS', 'Exported all assets to CSV');
+
 // Set CSV headers
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename=assets_export_' . date('Y-m-d_His') . '.csv');
@@ -90,9 +93,6 @@ while ($row = mysqli_fetch_assoc($result)) {
 }
 
 fclose($output);
-
-// Log the export action
-log_audit($conn, $_SESSION['user_id'], 'EXPORT_ASSETS', 'Exported all assets to CSV');
 
 exit();
 ?>

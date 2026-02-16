@@ -39,6 +39,9 @@ if (!$result) {
     die('Error fetching employee data');
 }
 
+// Log the export action
+log_audit($conn, $_SESSION['user_id'], 'EXPORT_EMPLOYEES', 'Exported all employees to CSV');
+
 // Set CSV headers
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename=employees_export_' . date('Y-m-d_His') . '.csv');
@@ -74,9 +77,6 @@ while ($row = mysqli_fetch_assoc($result)) {
 }
 
 fclose($output);
-
-// Log the export action
-log_audit($conn, $_SESSION['user_id'], 'EXPORT_EMPLOYEES', 'Exported all employees to CSV');
 
 exit();
 ?>
