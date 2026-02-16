@@ -844,7 +844,7 @@ function swapAsset(assetId, assetName, currentEmployeeId) {
     
     // Disable the current employee option
     if (currentEmployeeId) {
-        $("#swap_new_employee_id option[data-employee-id='" + currentEmployeeId + "']").prop("disabled", true);
+        $("#swap_new_employee_id option[data-employee-id=\'" + currentEmployeeId + "\']").prop("disabled", true);
     }
     
     // Reset selection
