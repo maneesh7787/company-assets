@@ -50,7 +50,7 @@
   - LOGIN_SUCCESS, LOGIN_FAILED, LOGOUT
   - USER_ADD, USER_UPDATE, USER_STATUS_CHANGE, PASSWORD_CHANGE
   - CATEGORY_ADD, CATEGORY_UPDATE, CATEGORY_DELETE
-  - ASSET_ADD, ASSET_UPDATE, ASSET_DELETE, ASSET_ASSIGN, ASSET_RETURN
+  - ASSET_ADD, ASSET_UPDATE, ASSET_DELETE, ASSET_ASSIGN, ASSET_SWAP, ASSET_RETURN
   - REQUEST_SUBMIT, REQUEST_APPROVE, REQUEST_REJECT
   - EXPORT_ASSETS, EXPORT_EMPLOYEES, EXPORT_AUDIT_LOGS
 
@@ -126,8 +126,9 @@ All 7 required tables created in `database.sql`:
 - ✅ Edit assets
 - ✅ Delete assets (only if not assigned)
 - ✅ Assign assets to employees
+- ✅ Swap assets between employees (NEW)
 - ✅ Return assets
-- ✅ Email notifications on assignment
+- ✅ Email notifications on assignment and swap
 - ✅ Serial number uniqueness validation
 
 #### Asset Request Management (`admin/requests.php`)

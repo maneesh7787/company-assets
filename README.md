@@ -21,7 +21,7 @@ A complete, secure Asset Management Portal for Business Marketing Companies buil
 - Dashboard with comprehensive statistics
 - User management (add, edit, activate/deactivate, password reset)
 - Asset category management
-- Asset management (add, edit, delete, assign, return)
+- Asset management (add, edit, delete, assign, swap, return)
 - Asset request approval/rejection
 - Asset assignments tracking
 - Audit logs with filtering
