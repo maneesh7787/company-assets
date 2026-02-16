@@ -222,6 +222,81 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
             }
+        } elseif ($action == 'swap') {
+            $asset_id = intval($_POST['asset_id'] ?? 0);
+            $new_employee_id = intval($_POST['new_employee_id'] ?? 0);
+            $swap_date = $_POST['swap_date'] ?? date('Y-m-d');
+            
+            if ($asset_id == 0 || $new_employee_id == 0) {
+                $error = 'Asset and new employee are required';
+            } else {
+                // Get asset info
+                $query = "SELECT asset_name, serial_number, status FROM assets WHERE id = ?";
+                $result = db_query($conn, $query, "i", [$asset_id]);
+                $asset = mysqli_fetch_assoc($result);
+                
+                if (!$asset) {
+                    $error = 'Asset not found';
+                } elseif ($asset['status'] != 'assigned') {
+                    $error = 'Asset is not currently assigned';
+                } else {
+                    // Get current active assignment
+                    $query = "SELECT aa.id, aa.employee_id, u.name as current_employee_name, u.email as current_employee_email 
+                             FROM asset_assignments aa 
+                             JOIN users u ON aa.employee_id = u.id 
+                             WHERE aa.asset_id = ? AND aa.status = 'active'";
+                    $result = db_query($conn, $query, "i", [$asset_id]);
+                    $current_assignment = mysqli_fetch_assoc($result);
+                    
+                    if (!$current_assignment) {
+                        $error = 'No active assignment found';
+                    } elseif ($current_assignment['employee_id'] == $new_employee_id) {
+                        $error = 'Asset is already assigned to this employee';
+                    } else {
+                        // Get new employee info
+                        $query = "SELECT name, email FROM users WHERE id = ? AND role = 'employee' AND status = 'active'";
+                        $result = db_query($conn, $query, "i", [$new_employee_id]);
+                        $new_employee = mysqli_fetch_assoc($result);
+                        
+                        if (!$new_employee) {
+                            $error = 'Invalid employee selected';
+                        } else {
+                            // Start transaction
+                            mysqli_begin_transaction($conn);
+                            
+                            try {
+                                // Mark current assignment as returned
+                                $query = "UPDATE asset_assignments SET returned_date = ?, status = 'returned' WHERE id = ?";
+                                $result1 = db_query($conn, $query, "si", [$swap_date, $current_assignment['id']]);
+                                
+                                // Create new assignment for new employee
+                                $query = "INSERT INTO asset_assignments (asset_id, employee_id, assigned_date, status) VALUES (?, ?, ?, 'active')";
+                                $result2 = db_query($conn, $query, "iis", [$asset_id, $new_employee_id, $swap_date]);
+                                
+                                // Asset remains in 'assigned' status (no need to update)
+                                
+                                if ($result1 !== false && $result2) {
+                                    mysqli_commit($conn);
+                                    $message = 'Asset swapped successfully';
+                                    
+                                    // Log audit
+                                    log_audit($conn, $_SESSION['user_id'], 'ASSET_SWAP', 
+                                        "Swapped asset #{$asset_id} ({$asset['asset_name']}) from employee #{$current_assignment['employee_id']} ({$current_assignment['current_employee_name']}) to employee #{$new_employee_id} ({$new_employee['name']})");
+                                    
+                                    // Send email notification to new employee
+                                    send_assignment_notification($new_employee['email'], $new_employee['name'], $asset['asset_name'], $asset['serial_number']);
+                                } else {
+                                    mysqli_rollback($conn);
+                                    $error = 'Failed to swap asset';
+                                }
+                            } catch (Exception $e) {
+                                mysqli_rollback($conn);
+                                $error = 'Failed to swap asset: ' . $e->getMessage();
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -373,6 +448,11 @@ ob_start();
                                     </button>
                                 <?php endif; ?>
                                 <?php if ($asset['status'] == 'assigned'): ?>
+                                    <button type="button" class="btn btn-sm btn-info" 
+                                            onclick="swapAsset(<?php echo $asset['id']; ?>, '<?php echo escape_output($asset['asset_name']); ?>')" 
+                                            title="Swap Asset">
+                                        <i class="fas fa-exchange-alt"></i>
+                                    </button>
                                     <button type="button" class="btn btn-sm btn-warning" 
                                             onclick="returnAsset(<?php echo $asset['id']; ?>, '<?php echo escape_output($asset['asset_name']); ?>')" 
                                             title="Return Asset">
@@ -642,6 +722,49 @@ ob_start();
     </div>
 </div>
 
+<!-- Swap Asset Modal -->
+<div class="modal fade" id="swapAssetModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="">
+                <input type="hidden" name="csrf_token" value="<?php echo escape_output($csrf_token); ?>">
+                <input type="hidden" name="action" value="swap">
+                <input type="hidden" name="asset_id" id="swap_asset_id">
+                
+                <div class="modal-header">
+                    <h5 class="modal-title">Swap Asset</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Swapping asset: <strong id="swap_asset_name"></strong></p>
+                    <div class="mb-3">
+                        <label class="form-label">New Employee *</label>
+                        <select class="form-select" name="new_employee_id" id="swap_new_employee_id" required>
+                            <option value="">Select Employee</option>
+                            <?php foreach ($employees_list as $emp): ?>
+                                <option value="<?php echo $emp['id']; ?>">
+                                    <?php echo escape_output($emp['name']); ?> (<?php echo escape_output($emp['email']); ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Swap Date *</label>
+                        <input type="date" class="form-control" name="swap_date" value="<?php echo date('Y-m-d'); ?>" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> This will return the asset from the current employee and assign it to the new employee. Email notifications will be sent.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info">Swap Asset</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Delete Asset Modal -->
 <div class="modal fade" id="deleteAssetModal" tabindex="-1">
     <div class="modal-dialog">
@@ -691,6 +814,12 @@ function assignAsset(assetId, assetName) {
     $("#assign_asset_id").val(assetId);
     $("#assign_asset_name").text(assetName);
     $("#assignAssetModal").modal("show");
+}
+
+function swapAsset(assetId, assetName) {
+    $("#swap_asset_id").val(assetId);
+    $("#swap_asset_name").text(assetName);
+    $("#swapAssetModal").modal("show");
 }
 
 function returnAsset(assetId, assetName) {
