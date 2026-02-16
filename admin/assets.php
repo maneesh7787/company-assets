@@ -140,32 +140,41 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (!$employee) {
                         $error = 'Invalid employee selected';
                     } else {
-                        // Start transaction
-                        mysqli_begin_transaction($conn);
+                        // Verify employee has an approved asset request
+                        $query = "SELECT id FROM asset_requests WHERE employee_id = ? AND status = 'approved' LIMIT 1";
+                        $result = db_query($conn, $query, "i", [$employee_id]);
+                        $has_approved_request = mysqli_fetch_assoc($result);
                         
-                        try {
-                            // Update asset status
-                            $query = "UPDATE assets SET status = 'assigned' WHERE id = ?";
-                            $result1 = db_query($conn, $query, "i", [$asset_id]);
+                        if (!$has_approved_request) {
+                            $error = 'Cannot assign asset. Employee must have an approved asset request first.';
+                        } else {
+                            // Start transaction
+                            mysqli_begin_transaction($conn);
                             
-                            // Create assignment record
-                            $query = "INSERT INTO asset_assignments (asset_id, employee_id, assigned_date, status) VALUES (?, ?, ?, 'active')";
-                            $result2 = db_query($conn, $query, "iis", [$asset_id, $employee_id, $assigned_date]);
-                            
-                            if ($result1 !== false && $result2) {
-                                mysqli_commit($conn);
-                                $message = 'Asset assigned successfully';
-                                log_audit($conn, $_SESSION['user_id'], 'ASSET_ASSIGN', "Assigned asset #{$asset_id} ({$asset['asset_name']}) to employee #{$employee_id} ({$employee['name']})");
+                            try {
+                                // Update asset status
+                                $query = "UPDATE assets SET status = 'assigned' WHERE id = ?";
+                                $result1 = db_query($conn, $query, "i", [$asset_id]);
                                 
-                                // Send email notification
-                                send_assignment_notification($employee['email'], $employee['name'], $asset['asset_name'], $asset['serial_number']);
-                            } else {
+                                // Create assignment record
+                                $query = "INSERT INTO asset_assignments (asset_id, employee_id, assigned_date, status) VALUES (?, ?, ?, 'active')";
+                                $result2 = db_query($conn, $query, "iis", [$asset_id, $employee_id, $assigned_date]);
+                                
+                                if ($result1 !== false && $result2) {
+                                    mysqli_commit($conn);
+                                    $message = 'Asset assigned successfully';
+                                    log_audit($conn, $_SESSION['user_id'], 'ASSET_ASSIGN', "Assigned asset #{$asset_id} ({$asset['asset_name']}) to employee #{$employee_id} ({$employee['name']})");
+                                    
+                                    // Send email notification
+                                    send_assignment_notification($employee['email'], $employee['name'], $asset['asset_name'], $asset['serial_number']);
+                                } else {
+                                    mysqli_rollback($conn);
+                                    $error = 'Failed to assign asset';
+                                }
+                            } catch (Exception $e) {
                                 mysqli_rollback($conn);
-                                $error = 'Failed to assign asset';
+                                $error = 'Failed to assign asset: ' . $e->getMessage();
                             }
-                        } catch (Exception $e) {
-                            mysqli_rollback($conn);
-                            $error = 'Failed to assign asset: ' . $e->getMessage();
                         }
                     }
                 }
@@ -301,9 +310,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-// Get all assets with category name
+// Get all assets with category name and current employee ID (for swap functionality)
 $query = "SELECT a.*, ac.category_name, 
-          (SELECT u.name FROM asset_assignments aa JOIN users u ON aa.employee_id = u.id WHERE aa.asset_id = a.id AND aa.status = 'active' LIMIT 1) as assigned_to
+          (SELECT u.name FROM asset_assignments aa JOIN users u ON aa.employee_id = u.id WHERE aa.asset_id = a.id AND aa.status = 'active' LIMIT 1) as assigned_to,
+          (SELECT aa.employee_id FROM asset_assignments aa WHERE aa.asset_id = a.id AND aa.status = 'active' LIMIT 1) as current_employee_id
           FROM assets a 
           LEFT JOIN asset_categories ac ON a.category_id = ac.id 
           ORDER BY a.created_at DESC";
@@ -317,8 +327,15 @@ while ($cat = mysqli_fetch_assoc($categories)) {
     $categories_list[] = $cat;
 }
 
-// Get all employees for assignment dropdown
-$query = "SELECT id, name, email FROM users WHERE role = 'employee' AND status = 'active' ORDER BY name";
+// Get employees with approved asset requests for assignment dropdown
+// Only employees who have submitted and got approved asset requests can be assigned assets
+$query = "SELECT DISTINCT u.id, u.name, u.email 
+          FROM users u 
+          INNER JOIN asset_requests ar ON u.id = ar.employee_id 
+          WHERE u.role = 'employee' 
+          AND u.status = 'active' 
+          AND ar.status = 'approved' 
+          ORDER BY u.name";
 $employees = db_query($conn, $query);
 $employees_list = [];
 while ($emp = mysqli_fetch_assoc($employees)) {
@@ -449,7 +466,7 @@ ob_start();
                                 <?php endif; ?>
                                 <?php if ($asset['status'] == 'assigned'): ?>
                                     <button type="button" class="btn btn-sm btn-info" 
-                                            onclick="swapAsset(<?php echo $asset['id']; ?>, '<?php echo escape_output($asset['asset_name']); ?>')" 
+                                            onclick="swapAsset(<?php echo $asset['id']; ?>, '<?php echo escape_output($asset['asset_name']); ?>', <?php echo $asset['current_employee_id'] ?? 0; ?>)" 
                                             title="Swap Asset">
                                         <i class="fas fa-exchange-alt"></i>
                                     </button>
@@ -730,6 +747,7 @@ ob_start();
                 <input type="hidden" name="csrf_token" value="<?php echo escape_output($csrf_token); ?>">
                 <input type="hidden" name="action" value="swap">
                 <input type="hidden" name="asset_id" id="swap_asset_id">
+                <input type="hidden" id="swap_current_employee_id">
                 
                 <div class="modal-header">
                     <h5 class="modal-title">Swap Asset</h5>
@@ -742,7 +760,7 @@ ob_start();
                         <select class="form-select" name="new_employee_id" id="swap_new_employee_id" required>
                             <option value="">Select Employee</option>
                             <?php foreach ($employees_list as $emp): ?>
-                                <option value="<?php echo $emp['id']; ?>">
+                                <option value="<?php echo $emp['id']; ?>" data-employee-id="<?php echo $emp['id']; ?>">
                                     <?php echo escape_output($emp['name']); ?> (<?php echo escape_output($emp['email']); ?>)
                                 </option>
                             <?php endforeach; ?>
@@ -816,9 +834,22 @@ function assignAsset(assetId, assetName) {
     $("#assignAssetModal").modal("show");
 }
 
-function swapAsset(assetId, assetName) {
+function swapAsset(assetId, assetName, currentEmployeeId) {
     $("#swap_asset_id").val(assetId);
     $("#swap_asset_name").text(assetName);
+    $("#swap_current_employee_id").val(currentEmployeeId);
+    
+    // Enable all options first
+    $("#swap_new_employee_id option").prop("disabled", false);
+    
+    // Disable the current employee option
+    if (currentEmployeeId) {
+        $("#swap_new_employee_id option[data-employee-id='" + currentEmployeeId + "']").prop("disabled", true);
+    }
+    
+    // Reset selection
+    $("#swap_new_employee_id").val("");
+    
     $("#swapAssetModal").modal("show");
 }
 
