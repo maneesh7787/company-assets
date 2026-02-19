@@ -405,10 +405,54 @@ ob_start();
     </div>
 </div>
 
+<!-- Detailed Reports Section -->
+<div class="row mt-5 mb-4">
+    <div class="col-12">
+        <h4 class="mb-3"><i class="fas fa-file-alt"></i> Detailed Reports</h4>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12 mb-3">
+        <div class="card content-card border-primary">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-2 text-center">
+                        <div class="stat-icon text-primary mb-3" style="font-size: 60px;">
+                            <i class="fas fa-users-cog"></i>
+                        </div>
+                    </div>
+                    <div class="col-md-7">
+                        <h5 class="card-title mb-2">Employee Assets Detailed Report</h5>
+                        <p class="card-text text-muted mb-2">
+                            View comprehensive report of all employees with their assigned assets. 
+                            Features include advanced filtering by employee name, asset categories, and employee status. 
+                            Includes search, sorting, pagination, and export functionality. 
+                            Also shows available assets in stock by category.
+                        </p>
+                        <div class="mt-2">
+                            <span class="badge bg-primary me-1"><i class="fas fa-filter"></i> Advanced Filters</span>
+                            <span class="badge bg-success me-1"><i class="fas fa-search"></i> Search</span>
+                            <span class="badge bg-info me-1"><i class="fas fa-sort"></i> Sorting</span>
+                            <span class="badge bg-warning me-1"><i class="fas fa-list"></i> Pagination</span>
+                            <span class="badge bg-secondary"><i class="fas fa-download"></i> Export</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <a href="employee_assets_report.php" class="btn btn-primary btn-lg">
+                            <i class="fas fa-chart-line"></i> View Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Export Section -->
 <div class="row mt-5">
     <div class="col-12">
-        <h4 class="mb-3"><i class="fas fa-download"></i> Data Export</h4>
+        <h4 class="mb-3"><i class="fas fa-download"></i> Quick Data Export</h4>
     </div>
 </div>
 
