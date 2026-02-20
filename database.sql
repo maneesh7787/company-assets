@@ -109,6 +109,34 @@ CREATE TABLE audit_logs (
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Table: asset_service_requests
+-- Stores employee requests for asset service/repair
+CREATE TABLE asset_service_requests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_id INT NOT NULL,
+    asset_id INT NOT NULL,
+    problem_description TEXT NOT NULL,
+    problem_since DATE NOT NULL,
+    remarks TEXT,
+    status ENUM('pending', 'approved', 'rejected', 'completed') NOT NULL DEFAULT 'pending',
+    admin_response TEXT,
+    repair_amount DECIMAL(10, 2),
+    repair_currency ENUM('USD', 'INR') DEFAULT 'USD',
+    bill_attachment VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    approved_at TIMESTAMP NULL,
+    approved_by INT NULL,
+    completed_at TIMESTAMP NULL,
+    FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE,
+    FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_employee (employee_id),
+    INDEX idx_asset (asset_id),
+    INDEX idx_status (status),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Insert default admin user
 -- Password: Admin@123 (hashed with PASSWORD_HASH)
 INSERT INTO users (name, email, password, role, status) VALUES

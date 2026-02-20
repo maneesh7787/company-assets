@@ -111,6 +111,9 @@ $sidebar_menu = '
     </a>
     <a class="nav-link active" href="requests.php">
         <i class="fas fa-clipboard-list"></i> Asset Requests
+    <a class="nav-link" href="service_requests.php">
+        <i class="fas fa-tools"></i> Service Requests
+    </a>
     </a>
     <a class="nav-link" href="audit_logs.php">
         <i class="fas fa-history"></i> Audit Logs
@@ -140,6 +143,9 @@ ob_start();
 <div class="card content-card mb-4">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="fas fa-clipboard-list"></i> Asset Requests</h5>
+    <a class="nav-link" href="service_requests.php">
+        <i class="fas fa-tools"></i> Service Requests
+    </a>
     </div>
     <div class="card-body">
         <div class="table-responsive">

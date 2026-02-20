@@ -71,6 +71,9 @@ $sidebar_menu = '
     <a class="nav-link" href="request_asset.php">
         <i class="fas fa-plus-circle"></i> Request Asset
     </a>
+    <a class="nav-link" href="service_request.php">
+        <i class="fas fa-tools"></i> Service Requests
+    </a>
     <a class="nav-link" href="profile.php">
         <i class="fas fa-user"></i> My Profile
     </a>
