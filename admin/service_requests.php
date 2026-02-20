@@ -18,7 +18,7 @@ $error = '';
 
 // Handle approve/reject actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    if (!validate_csrf_token($_POST['csrf_token'] ?? '')) {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
         $error = 'Invalid security token. Please try again.';
     } else {
         $request_id = intval($_POST['request_id'] ?? 0);
