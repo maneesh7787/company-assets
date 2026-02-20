@@ -487,6 +487,6 @@ function openCompleteModal(requestId) {
 </script>
 
 <?php
-$content = ob_get_clean();
+$page_content = ob_get_clean();
 require_once '../layout.php';
 ?>
