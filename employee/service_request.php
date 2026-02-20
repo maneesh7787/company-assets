@@ -20,7 +20,7 @@ $error = '';
 
 // Handle form submission for new service request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create') {
-    if (!validate_csrf_token($_POST['csrf_token'] ?? '')) {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
         $error = 'Invalid security token. Please try again.';
     } else {
         $asset_id = intval($_POST['asset_id'] ?? 0);
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Handle marking request as completed
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'complete') {
-    if (!validate_csrf_token($_POST['csrf_token'] ?? '')) {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
         $error = 'Invalid security token. Please try again.';
     } else {
         $request_id = intval($_POST['request_id'] ?? 0);
